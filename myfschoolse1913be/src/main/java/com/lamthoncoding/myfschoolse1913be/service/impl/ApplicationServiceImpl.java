@@ -74,17 +74,17 @@ public class ApplicationServiceImpl implements ApplicationService {
 
     private Teacher getTeacher(Long userId) {
         return teacherRepository.findByUserId(userId)
-                .orElseThrow(() -> new EntityNotFound("Teacher not found"));
+                .orElseThrow(() -> new EntityNotFound("Không tìm thấy giáo viên"));
     }
 
     private void validateApplicationDate(ApplicationRequest request) {
         LocalDate today = LocalDate.now();
 
         if (request.getFromDate().isBefore(today)) {
-            throw new InvalidInputException("Start date cannot be before today");
+            throw new InvalidInputException("Ngày bắt đầu không được trước ngày hiện tại");
         }
         if (request.getFromDate().isAfter(request.getToDate())) {
-            throw new InvalidInputException("Start date cannot be after end date");
+            throw new InvalidInputException("Ngày bắt đầu không được sau ngày kết thúc");
         }
     }
 
@@ -102,7 +102,7 @@ public class ApplicationServiceImpl implements ApplicationService {
         }
 
         Teacher teacher = teacherRepository.findByUserId(currentUserId)
-                .orElseThrow(() -> new EntityNotFound("User information not found"));
+                .orElseThrow(() -> new EntityNotFound("Không tìm thấy thông tin người dùng"));
 
         return applicationRepository.findByTeacherIdOrderByCreatedAtDesc(teacher.getId())
                 .stream()
@@ -118,16 +118,16 @@ public class ApplicationServiceImpl implements ApplicationService {
         if (studentOpt.isPresent()) {
             Application application = applicationRepository
                     .findByIdAndStudentId(id, studentOpt.get().getId())
-                    .orElseThrow(() -> new AccessDeniedException("You do not have permission to view this application"));
+                    .orElseThrow(() -> new AccessDeniedException("Bạn không có quyền xem đơn này"));
             return toResponse(application);
         }
 
         Teacher teacher = teacherRepository.findByUserId(currentUserId)
-                .orElseThrow(() -> new EntityNotFound("User information not found"));
+                .orElseThrow(() -> new EntityNotFound("Không tìm thấy thông tin người dùng"));
 
         Application application = applicationRepository
                 .findByIdAndTeacherId(id, teacher.getId())
-                .orElseThrow(() -> new AccessDeniedException("You do not have permission to view this application"));
+                .orElseThrow(() -> new AccessDeniedException("Bạn không có quyền xem đơn này"));
 
         return toResponse(application);
     }
@@ -159,7 +159,7 @@ public class ApplicationServiceImpl implements ApplicationService {
     public ApplicationResponse getApplicationById(Long id) {
         log.info("Admin fetching application id={}", id);
         Application application = applicationRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFound("Application not found with id=" + id));
+                .orElseThrow(() -> new EntityNotFound("Không tìm thấy đơn yêu cầu với id=" + id));
         return toResponse(application);
     }
 
@@ -207,17 +207,17 @@ public class ApplicationServiceImpl implements ApplicationService {
 
     private Application getAndValidatePendingApplication(Long id) {
         Application application = applicationRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFound("Application not found with id=" + id));
+                .orElseThrow(() -> new EntityNotFound("Không tìm thấy đơn yêu cầu với id=" + id));
 
         if (application.getStatus() != ApplicationStatus.PENDING) {
-            throw new ApplicationAlreadyReviewedException("This application has already been reviewed");
+            throw new ApplicationAlreadyReviewedException("Đơn yêu cầu này đã được xử lý");
         }
         return application;
     }
 
     private User getAdmin(Long adminUserId) {
         return userRepository.findById(adminUserId)
-                .orElseThrow(() -> new EntityNotFound("Admin not found"));
+                .orElseThrow(() -> new EntityNotFound("Không tìm thấy quản trị viên"));
     }
 
     /**
@@ -254,7 +254,7 @@ public class ApplicationServiceImpl implements ApplicationService {
         if (application.getTeacher() != null) {
             return application.getTeacher().getUser();
         }
-        throw new EntityNotFound("Application has no associated student or teacher");
+        throw new EntityNotFound("Đơn yêu cầu không được liên kết với học sinh hoặc giáo viên nào");
     }
 
     private ApplicationResponse toResponse(Application application) {

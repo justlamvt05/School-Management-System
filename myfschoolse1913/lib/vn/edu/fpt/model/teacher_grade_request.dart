@@ -2,6 +2,7 @@ class TeacherGradeRequest {
   final int studentId;
   final int subjectId;
   final int semesterId;
+  final String schoolYear;
   final double? oralScore;
   final double? score15Min;
   final double? score1Period;
@@ -11,6 +12,7 @@ class TeacherGradeRequest {
     required this.studentId,
     required this.subjectId,
     required this.semesterId,
+    required this.schoolYear,
     this.oralScore,
     this.score15Min,
     this.score1Period,
@@ -22,6 +24,7 @@ class TeacherGradeRequest {
       'studentId': studentId,
       'subjectId': subjectId,
       'semesterId': semesterId,
+      'schoolYear': schoolYear,
       if (oralScore != null) 'oralScore': oralScore,
       if (score15Min != null) 'score15Min': score15Min,
       if (score1Period != null) 'score1Period': score1Period,

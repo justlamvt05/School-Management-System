@@ -1,5 +1,6 @@
 package com.lamthoncoding.myfschoolse1913be.entity;
 import java.time.LocalDate;
+import java.util.List;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -33,4 +34,10 @@ public class Student extends BaseEntity {
     @ManyToOne
     @JoinColumn(name = "class_room_id")
     private ClassRoom classRoom;
+
+    @OneToMany(mappedBy = "student")
+    private List<StudentClassRoom> classHistory;
+
+    @OneToMany(mappedBy = "student")
+    private List<ParentStudent> parents;
 }

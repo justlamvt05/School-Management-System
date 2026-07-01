@@ -40,9 +40,9 @@ public class ClubServiceImpl implements ClubService {
     public ClubResponse getClubById(Long id, String phone) {
         log.info("Get club {} for user: {}", id, phone);
         Club club = clubRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFound("Club not found"));
+                .orElseThrow(() -> new EntityNotFound("Không tìm thấy câu lạc bộ"));
         Optional<Student> studentOpt = phone != null ? studentRepository.findByUserPhone(phone) : Optional.empty();
-        
+
         return clubMapper.toResponse(club, studentOpt);
     }
 }

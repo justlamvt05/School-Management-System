@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:myfschoolse1913/vn/edu/fpt/view/parent/parent_home_page.dart';
 import 'package:myfschoolse1913/vn/edu/fpt/view/student/student_home_page.dart';
 import 'package:myfschoolse1913/vn/edu/fpt/view/teacher/teacher_home_page.dart';
 import 'forgot_password_dialog.dart';
@@ -30,7 +31,111 @@ class _LoginState extends State<LoginScreen>
   final AuthController authController = AuthController();
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  Future<void> _handleRoleNavigation(
+      BuildContext context,
+      List<String> roles,
+      String phone,
+      String token,
+      String? refreshToken,
+      ) async {
+    if (roles.length == 1) {
+      _navigateByRole(
+        context,
+        roles.first,
+        phone,
+        token,
+        refreshToken!,
+      );
+      return;
+    }
 
+    final String? selectedRole = await showDialog<String>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => AlertDialog(
+        title: const Text('Chọn vai trò'),
+        content: const Text(
+          'Tài khoản của bạn có nhiều vai trò. Vui lòng chọn để tiếp tục.',
+        ),
+        actions: [
+          if (roles.contains('ROLE_TEACHER'))
+            TextButton(
+              onPressed: () => Navigator.pop(context, 'ROLE_TEACHER'),
+              child: const Text('Giáo viên'),
+            ),
+          if (roles.contains('ROLE_PARENT'))
+            TextButton(
+              onPressed: () => Navigator.pop(context, 'ROLE_PARENT'),
+              child: const Text('Phụ huynh'),
+            ),
+          if (roles.contains('ROLE_STUDENT'))
+            TextButton(
+              onPressed: () => Navigator.pop(context, 'ROLE_STUDENT'),
+              child: const Text('Học sinh'),
+            ),
+        ],
+      ),
+    );
+
+    if (selectedRole != null) {
+      _navigateByRole(
+        context,
+        selectedRole,
+        phone,
+        token,
+        refreshToken!,
+      );
+    }
+  }
+
+  void _navigateByRole(
+      BuildContext context,
+      String role,
+      String phone,
+      String token,
+      String refreshToken,
+      ) {
+    switch (role) {
+      case 'ROLE_TEACHER':
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => TeacherHomePage(
+              phone: phone,
+              token: token,
+              refreshToken: refreshToken,
+            ),
+          ),
+        );
+        break;
+
+      case 'ROLE_PARENT':
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ParentHomePage(
+              phone: phone,
+              token: token,
+              refreshToken: refreshToken,
+            ),
+          ),
+        );
+        break;
+
+      case 'ROLE_STUDENT':
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => HomePage(
+              phone: phone,
+              token: token,
+              refreshToken: refreshToken,
+            ),
+          ),
+        );
+        break;
+    }
+  }
   @override
   void initState() {
     super.initState();
@@ -79,68 +184,62 @@ class _LoginState extends State<LoginScreen>
 
       final result = await authController.login(request);
 
-      final decoded = JwtDecoder.decode(result.data!.token);
+      if (!mounted) return;
 
-      final List roles = decoded['roles'];
-      if (result.status) {
+      if (result.status && result.data != null) {
+        final decoded = JwtDecoder.decode(result.data!.token);
+        final List roles = decoded['roles'];
+
         TokenManager.instance.token = result.data!.token;
         TokenManager.instance.refreshToken = result.data!.refreshToken ?? '';
 
-        if (roles.contains('ROLE_TEACHER')) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (_) => TeacherHomePage(
-                phone: result.data!.phone,
-                token: result.data!.token,
-                refreshToken: result.data!.refreshToken ?? '',
-              ),
-            ),
-          );
-        } else if (roles.contains('ROLE_STUDENT')) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (_) => HomePage(
-                phone: result.data!.phone,
-                token: result.data!.token,
-                refreshToken: result.data!.refreshToken ?? '',
-              ),
-            ),
-          );
-        }
+        await _handleRoleNavigation(
+          context,
+          roles.cast<String>(),
+          result.data!.phone,
+          result.data!.token,
+          result.data!.refreshToken
+        );
       } else {
+        String errorMessage;
         switch (result.code) {
           case "E002":
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text("Sai tài khoản hoặc mật khẩu"),
-              ),
-            );
+            errorMessage = "Sai tài khoản hoặc mật khẩu";
             break;
-
           case "E005":
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text("Chưa đăng nhập"),
-              ),
-            );
+            errorMessage = "Phiên đăng nhập hết hạn";
             break;
-
           default:
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(result.message),
-              ),
-            );
+            errorMessage = result.message.isNotEmpty
+                ? result.message
+                : "Đăng nhập thất bại";
         }
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorMessage),
+            backgroundColor: Colors.red.shade600,
+          ),
+        );
       }
     } catch (e) {
+      if (!mounted) return;
+      String errorMessage;
+      if (e.toString().contains('SocketException') ||
+          e.toString().contains('Connection refused') ||
+          e.toString().contains('Failed host lookup')) {
+        errorMessage = 'Không thể kết nối tới máy chủ';
+      } else if (e.toString().contains('TimeoutException')) {
+        errorMessage = 'Kết nối quá thời gian, vui lòng thử lại';
+      } else {
+        errorMessage = 'Đã xảy ra lỗi, vui lòng thử lại';
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text("Lỗi: $e"),
+          content: Text(errorMessage),
+          backgroundColor: Colors.red.shade600,
         ),
       );
+
     } finally {
       if (mounted) {
         setState(() {

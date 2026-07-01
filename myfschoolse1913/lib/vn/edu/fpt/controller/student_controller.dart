@@ -6,6 +6,7 @@ import '../model/schedule_response.dart';
 import '../model/grade_response.dart';
 import '../model/club_item.dart';
 import '../model/attendance_response.dart';
+import '../model/classroom_response.dart';
 import '../core/token_manager.dart';
 import 'auth_controller.dart';
 
@@ -95,7 +96,7 @@ class StudentController {
     );
   }
 
-  /// Lấy chi tiết điểm danh theo classId, year, month
+  /// Lấy danh sách chi tiết điểm danh theo classId, year, month
   Future<ApiResponse<List<AttendanceItem>>> getAttendances(int classId, int year, int month) async {
     final response = await _getWithRetry("$baseUrl/attendances/class/$classId/my?year=$year&month=$month");
 
@@ -105,6 +106,34 @@ class StudentController {
       json,
       (data) => (data as List)
           .map((item) => AttendanceItem.fromJson(item))
+          .toList(),
+    );
+  }
+
+  /// Lấy lịch sử lớp học của học sinh
+  Future<ApiResponse<List<ClassRoomResponse>>> getStudentClassHistory(int studentId) async {
+    final response = await _getWithRetry("$baseUrl/grades/$studentId/classes");
+
+    final json = jsonDecode(response.body);
+
+    return ApiResponse<List<ClassRoomResponse>>.fromJson(
+      json,
+      (data) => (data as List)
+          .map((item) => ClassRoomResponse.fromJson(item))
+          .toList(),
+    );
+  }
+
+  /// Lấy bảng điểm theo năm học và học kỳ
+  Future<ApiResponse<List<GradeItem>>> getGradesBySchoolYearAndSemester(int studentId, String schoolYear, int semesterId) async {
+    final response = await _getWithRetry("$baseUrl/grades/$studentId/school-year/$schoolYear/semester/$semesterId");
+
+    final json = jsonDecode(response.body);
+
+    return ApiResponse<List<GradeItem>>.fromJson(
+      json,
+      (data) => (data as List)
+          .map((item) => GradeItem.fromJson(item))
           .toList(),
     );
   }

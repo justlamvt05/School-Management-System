@@ -118,6 +118,18 @@ class _TeacherAttendanceTakePageState extends State<TeacherAttendanceTakePage> {
         _isLoadingStudents = false;
       });
     }
+    String getVietnameseError(String? errorCode) {
+      switch (errorCode) {
+        case 'ATTENDANCE_NOT_FOUND':
+          return 'Chưa đến thời gian điểm danh của lớp này.';
+        case 'ATTENDANCE_NOT_ASSIGNED':
+          return 'Bạn không được phân công giảng dạy lớp này.';
+        case 'ATTENDANCE_INVALID_PERIOD':
+          return 'Bạn không được phân công giảng dạy ở tiết học này.';
+        default:
+          return errorCode ?? 'Đã xảy ra lỗi.';
+      }
+    }
   }
 
   Future<void> _pickDate() async {
@@ -538,14 +550,12 @@ class _TeacherAttendanceTakePageState extends State<TeacherAttendanceTakePage> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          _buildNavItem(Icons.home_rounded, isActive: true, onPressed: () {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                  builder: (_) =>
-                      TeacherHomePage(phone: '', token: widget.token)),
-            );
-          }),
+          _buildNavItem(
+            Icons.home_rounded,
+            onPressed: () {
+              Navigator.popUntil(context, (route) => route.isFirst);
+            },
+          ),
           _buildNavItem(Icons.chat_bubble_outline_rounded),
           _buildNavItem(Icons.person_outline_rounded),
         ],

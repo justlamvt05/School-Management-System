@@ -10,5 +10,7 @@ public interface GradeMapper {
 
     @Mapping(source = "subject.subjectName", target = "subjectName")
     @Mapping(source = "semester.semesterName", target = "semesterName")
+    @Mapping(source = "semester.schoolYear", target = "schoolYear")
+    @Mapping(target = "className", ignore = true)
     GradeResponse toResponse(Grade grade);
 }

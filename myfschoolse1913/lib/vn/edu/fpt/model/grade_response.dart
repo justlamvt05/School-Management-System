@@ -7,6 +7,8 @@ class GradeItem {
   final double finalExam;
   final double averageScore;
   final String semesterName;
+  final String schoolYear;
+  final String className;
 
   GradeItem({
     required this.subjectName,
@@ -16,6 +18,8 @@ class GradeItem {
     required this.finalExam,
     required this.averageScore,
     required this.semesterName,
+    required this.schoolYear,
+    required this.className,
   });
 
   factory GradeItem.fromJson(Map<String, dynamic> json) {
@@ -27,6 +31,8 @@ class GradeItem {
       finalExam: (json['finalExam'] ?? 0).toDouble(),
       averageScore: (json['averageScore'] ?? 0).toDouble(),
       semesterName: json['semesterName'] ?? '',
+      schoolYear: json['schoolYear'] ?? '',
+      className: json['className'] ?? '',
     );
   }
 }

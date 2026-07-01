@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../controller/student_controller.dart';
+import '../../controller/parent_controller.dart';
 import '../../model/attendance_response.dart';
 import '../user/notification.dart';
 import '../user_profile.dart';
@@ -7,8 +8,15 @@ import '../user_profile.dart';
 /// Trang "Điểm danh" – hiển thị danh sách tháng, sau đó xem chi tiết điểm danh
 class AttendancePage extends StatefulWidget {
   final String token;
+  final int? studentId;
+  final int? classId;
 
-  const AttendancePage({super.key, required this.token});
+  const AttendancePage({
+    super.key,
+    required this.token,
+    this.studentId,
+    this.classId,
+  });
 
   @override
   State<AttendancePage> createState() => _AttendancePageState();
@@ -21,7 +29,8 @@ class _AttendancePageState extends State<AttendancePage> {
   static const Color _textDark = Color(0xFF333333);
   static const Color _textGrey = Color(0xFF9A9A9A);
 
-  late StudentController _controller;
+  StudentController? _studentController;
+  ParentController? _parentController;
 
   // Months list
   List<AttendanceMonth> _months = [];
@@ -37,7 +46,11 @@ class _AttendancePageState extends State<AttendancePage> {
   @override
   void initState() {
     super.initState();
-    _controller = StudentController(token: widget.token);
+    if (widget.studentId != null) {
+      _parentController = ParentController(token: widget.token);
+    } else {
+      _studentController = StudentController(token: widget.token);
+    }
     _fetchMonths();
   }
 
@@ -48,7 +61,12 @@ class _AttendancePageState extends State<AttendancePage> {
     });
 
     try {
-      final result = await _controller.getAttendanceMonths(1);
+      final result = widget.studentId != null
+          ? await _parentController!.getAttendanceMonths(
+              widget.studentId!,
+              widget.classId ?? 1,
+            )
+          : await _studentController!.getAttendanceMonths(widget.classId ?? 1);
       if (result.status && result.data != null) {
         setState(() {
           _months = result.data!;
@@ -77,7 +95,18 @@ class _AttendancePageState extends State<AttendancePage> {
     });
 
     try {
-      final result = await _controller.getAttendances(1, month.year, month.month);
+      final result = widget.studentId != null
+          ? await _parentController!.getAttendances(
+              widget.studentId!,
+              widget.classId ?? 1,
+              month.year,
+              month.month,
+            )
+          : await _studentController!.getAttendances(
+              widget.classId ?? 1,
+              month.year,
+              month.month,
+            );
       if (result.status && result.data != null) {
         setState(() {
           _attendances = result.data!;
@@ -179,9 +208,7 @@ class _AttendancePageState extends State<AttendancePage> {
   // ── Danh sách tháng ───────────────────────────
   Widget _buildMonthList() {
     if (_isLoadingMonths) {
-      return const Center(
-        child: CircularProgressIndicator(color: _orange),
-      );
+      return const Center(child: CircularProgressIndicator(color: _orange));
     }
 
     if (_monthsError != null) {
@@ -210,9 +237,19 @@ class _AttendancePageState extends State<AttendancePage> {
 
   Widget _buildMonthCard(AttendanceMonth month) {
     final monthNames = [
-      '', 'Tháng 1', 'Tháng 2', 'Tháng 3', 'Tháng 4',
-      'Tháng 5', 'Tháng 6', 'Tháng 7', 'Tháng 8',
-      'Tháng 9', 'Tháng 10', 'Tháng 11', 'Tháng 12',
+      '',
+      'Tháng 1',
+      'Tháng 2',
+      'Tháng 3',
+      'Tháng 4',
+      'Tháng 5',
+      'Tháng 6',
+      'Tháng 7',
+      'Tháng 8',
+      'Tháng 9',
+      'Tháng 10',
+      'Tháng 11',
+      'Tháng 12',
     ];
 
     return Material(
@@ -260,10 +297,7 @@ class _AttendancePageState extends State<AttendancePage> {
                     const SizedBox(height: 4),
                     Text(
                       'Năm ${month.year}',
-                      style: const TextStyle(
-                        fontSize: 13,
-                        color: _textGrey,
-                      ),
+                      style: const TextStyle(fontSize: 13, color: _textGrey),
                     ),
                   ],
                 ),
@@ -283,9 +317,7 @@ class _AttendancePageState extends State<AttendancePage> {
   // ── Chi tiết điểm danh ────────────────────────
   Widget _buildAttendanceDetail() {
     if (_isLoadingAttendances) {
-      return const Center(
-        child: CircularProgressIndicator(color: _orange),
-      );
+      return const Center(child: CircularProgressIndicator(color: _orange));
     }
 
     if (_attendancesError != null) {
@@ -361,10 +393,22 @@ class _AttendancePageState extends State<AttendancePage> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          _buildStatItem('Có mặt', stats['PRESENT'] ?? 0, const Color(0xFF4CAF50)),
+          _buildStatItem(
+            'Có mặt',
+            stats['PRESENT'] ?? 0,
+            const Color(0xFF4CAF50),
+          ),
           _buildStatItem('Trễ', stats['LATE'] ?? 0, const Color(0xFFFF9800)),
-          _buildStatItem('Có phép', stats['ABSENT_WITH_PERMISSION'] ?? 0, const Color(0xFF2196F3)),
-          _buildStatItem('Không phép', stats['ABSENT_WITHOUT_PERMISSION'] ?? 0, const Color(0xFFE61610)),
+          _buildStatItem(
+            'Có phép',
+            stats['ABSENT_WITH_PERMISSION'] ?? 0,
+            const Color(0xFF2196F3),
+          ),
+          _buildStatItem(
+            'Không phép',
+            stats['ABSENT_WITHOUT_PERMISSION'] ?? 0,
+            const Color(0xFFE61610),
+          ),
         ],
       ),
     );
@@ -553,8 +597,11 @@ class _AttendancePageState extends State<AttendancePage> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.error_outline_rounded,
-                size: 48, color: Colors.red.shade300),
+            Icon(
+              Icons.error_outline_rounded,
+              size: 48,
+              color: Colors.red.shade300,
+            ),
             const SizedBox(height: 12),
             Text(
               error,
@@ -593,7 +640,7 @@ class _AttendancePageState extends State<AttendancePage> {
           _buildNavItem(
             Icons.home_rounded,
             onPressed: () {
-              Navigator.pop(context);
+              Navigator.popUntil(context, (route) => route.isFirst);
             },
           ),
           _buildNavItem(
@@ -624,10 +671,10 @@ class _AttendancePageState extends State<AttendancePage> {
   }
 
   Widget _buildNavItem(
-      IconData icon, {
-        bool isActive = false,
-        VoidCallback? onPressed,
-      }) {
+    IconData icon, {
+    bool isActive = false,
+    VoidCallback? onPressed,
+  }) {
     return IconButton(
       icon: Icon(
         icon,

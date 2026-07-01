@@ -1,14 +1,36 @@
 import 'package:flutter/material.dart';
 import '../../controller/student_controller.dart';
 import '../../model/grade_response.dart';
+import '../../model/classroom_response.dart';
 import '../user/notification.dart';
 import '../user_profile.dart';
 
-/// Trang "Bảng điểm" – gọi API /api/student/grades/{studentId}
+// Model nhỏ để giữ semester kèm schoolYear
+class _SemesterOption {
+  final int id;
+  final String name;
+  final String schoolYear;
+  const _SemesterOption({required this.id, required this.name, required this.schoolYear});
+  
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is _SemesterOption &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          schoolYear == other.schoolYear;
+
+  @override
+  int get hashCode => id.hashCode ^ schoolYear.hashCode;
+}
+
+/// Trang "Bảng điểm" – gọi API /api/student/grades/{studentId}/...
 class MarkReportPage extends StatefulWidget {
   final String token;
+  final int? studentId;
+  final int? classId;
 
-  const MarkReportPage({super.key, required this.token});
+  const MarkReportPage({super.key, required this.token, this.studentId, this.classId});
 
   @override
   State<MarkReportPage> createState() => _MarkReportPageState();
@@ -23,60 +45,134 @@ class _MarkReportPageState extends State<MarkReportPage> {
   static const Color _textGrey = Color(0xFF9A9A9A);
 
   late StudentController _controller;
-  List<GradeItem> _allGrades = [];
-  List<String> _semesters = [];
-  String? _selectedSemester;
-  bool _isLoading = true;
+  
+  // Data cho filters
+  List<ClassRoomResponse> _classes = [];
+  ClassRoomResponse? _selectedClass;
+  
+  List<_SemesterOption> _semesterOptions = [];
+  _SemesterOption? _selectedSemester;
+
+  // Data cho bảng điểm
+  List<GradeItem> _grades = [];
+  bool _isLoadingClasses = true;
+  bool _isLoadingGrades = false;
   String? _error;
 
   @override
   void initState() {
     super.initState();
     _controller = StudentController(token: widget.token);
-    _fetchGrades();
+    _fetchClassHistory();
   }
 
-  Future<void> _fetchGrades() async {
+  Future<void> _fetchClassHistory() async {
     setState(() {
-      _isLoading = true;
+      _isLoadingClasses = true;
       _error = null;
     });
 
     try {
-      final result = await _controller.getGrades(2);
+      final result = await _controller.getStudentClassHistory(widget.studentId ?? 2); // default studentId = 2
       if (result.status && result.data != null) {
+        final classes = result.data!;
+        ClassRoomResponse? firstClass = classes.isNotEmpty ? classes.first : null;
+        
+        List<_SemesterOption> semOptions = [];
+        _SemesterOption? firstSem;
+
+        if (firstClass != null) {
+          semOptions = _buildSemesterOptions(firstClass.schoolYear);
+          firstSem = semOptions.isNotEmpty ? semOptions.first : null;
+        }
+
         setState(() {
-          _allGrades = result.data!;
-          // Lấy danh sách học kỳ duy nhất, giữ thứ tự
-          final seen = <String>{};
-          _semesters = _allGrades
-              .map((g) => g.semesterName)
-              .where((s) => seen.add(s))
-              .toList();
-          _selectedSemester =
-              _semesters.isNotEmpty ? _semesters.first : null;
-          _isLoading = false;
+          _classes = classes;
+          _selectedClass = firstClass;
+          _semesterOptions = semOptions;
+          _selectedSemester = firstSem;
+          _isLoadingClasses = false;
         });
+
+        if (firstClass != null) {
+          _fetchGrades();
+        }
       } else {
         setState(() {
           _error = result.message;
-          _isLoading = false;
+          _isLoadingClasses = false;
         });
       }
     } catch (e) {
       setState(() {
         _error = 'Lỗi kết nối: $e';
-        _isLoading = false;
+        _isLoadingClasses = false;
       });
     }
   }
 
-  /// Lọc điểm theo học kỳ được chọn
-  List<GradeItem> get _filteredGrades {
-    if (_selectedSemester == null) return [];
-    return _allGrades
-        .where((g) => g.semesterName == _selectedSemester)
-        .toList();
+  // ── Sinh semester options dựa trên school year ─────────────────
+  List<_SemesterOption> _buildSemesterOptions(String schoolYear) {
+    const Map<String, List<_SemesterOption>> _seedMap = {
+      '2025-2026': [
+        _SemesterOption(id: 1, name: 'Học kỳ 1', schoolYear: '2025-2026'),
+        _SemesterOption(id: 2, name: 'Học kỳ 2', schoolYear: '2025-2026'),
+      ],
+      '2024-2025': [
+        _SemesterOption(id: 3, name: 'Học kỳ 1', schoolYear: '2024-2025'),
+        _SemesterOption(id: 4, name: 'Học kỳ 2', schoolYear: '2024-2025'),
+      ],
+    };
+    return _seedMap[schoolYear] ?? [
+      _SemesterOption(id: 1, name: 'Học kỳ 1', schoolYear: schoolYear),
+      _SemesterOption(id: 2, name: 'Học kỳ 2', schoolYear: schoolYear),
+    ];
+  }
+
+  void _onClassChanged(ClassRoomResponse? val) {
+    if (val == null || val == _selectedClass) return;
+    
+    final semOptions = _buildSemesterOptions(val.schoolYear);
+    setState(() {
+      _selectedClass = val;
+      _semesterOptions = semOptions;
+      _selectedSemester = semOptions.isNotEmpty ? semOptions.first : null;
+      _grades = [];
+    });
+    _fetchGrades();
+  }
+
+  Future<void> _fetchGrades() async {
+    if (_selectedClass == null || _selectedSemester == null) return;
+    
+    setState(() {
+      _isLoadingGrades = true;
+      _error = null;
+    });
+
+    try {
+      final result = await _controller.getGradesBySchoolYearAndSemester(
+        widget.studentId ?? 2, // default studentId = 2
+        _selectedClass!.schoolYear,
+        _selectedSemester!.id,
+      );
+      if (result.status && result.data != null) {
+        setState(() {
+          _grades = result.data!;
+          _isLoadingGrades = false;
+        });
+      } else {
+        setState(() {
+          _error = result.message;
+          _isLoadingGrades = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _error = 'Lỗi kết nối: $e';
+        _isLoadingGrades = false;
+      });
+    }
   }
 
   @override
@@ -88,7 +184,7 @@ class _MarkReportPageState extends State<MarkReportPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildTopBar(context),
-            _buildSemesterSelector(),
+            _buildFilters(),
             Expanded(child: _buildBody()),
           ],
         ),
@@ -138,49 +234,89 @@ class _MarkReportPageState extends State<MarkReportPage> {
     );
   }
 
-  // ── Bộ chọn học kỳ ─────────────────────────────
-  Widget _buildSemesterSelector() {
-    if (_semesters.isEmpty) return const SizedBox.shrink();
+  // ── Bộ chọn lớp và học kỳ ─────────────────────────────
+  Widget _buildFilters() {
+    if (_isLoadingClasses) return const SizedBox.shrink();
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 4),
+    if (_classes.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.all(16.0),
+        child: Text('Không có dữ liệu lớp học', style: TextStyle(color: _textGrey)),
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(bottom: BorderSide(color: _border)),
+      ),
       child: Row(
-        children: _semesters.map((semester) {
-          final isSelected = semester == _selectedSemester;
-          return Padding(
-            padding: const EdgeInsets.only(right: 10),
-            child: GestureDetector(
-              onTap: () => setState(() => _selectedSemester = semester),
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 16, vertical: 8),
-                decoration: BoxDecoration(
-                  color: isSelected ? _orange : Colors.white,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: isSelected ? _orange : _border,
-                    width: 1,
-                  ),
-                ),
-                child: Text(
-                  semester,
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: isSelected ? Colors.white : _textDark,
-                  ),
-                ),
-              ),
+        children: [
+          // Lớp
+          Expanded(
+            flex: 3,
+            child: DropdownButtonFormField<ClassRoomResponse>(
+              value: _selectedClass,
+              decoration: _dropDeco('Lớp - Năm học'),
+              isExpanded: true,
+              items: _classes
+                  .map((c) => DropdownMenuItem(
+                        value: c,
+                        child: Text('${c.name} (${c.schoolYear})', overflow: TextOverflow.ellipsis),
+                      ))
+                  .toList(),
+              onChanged: _onClassChanged,
             ),
-          );
-        }).toList(),
+          ),
+          const SizedBox(width: 12),
+          // Học kỳ
+          Expanded(
+            flex: 2,
+            child: DropdownButtonFormField<_SemesterOption>(
+              value: _selectedSemester,
+              decoration: _dropDeco('Học kỳ'),
+              isExpanded: true,
+              items: _semesterOptions
+                  .map((s) => DropdownMenuItem(
+                        value: s,
+                        child: Text(s.name, overflow: TextOverflow.ellipsis),
+                      ))
+                  .toList(),
+              onChanged: (val) {
+                if (val != null && val != _selectedSemester) {
+                  setState(() => _selectedSemester = val);
+                  _fetchGrades();
+                }
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
 
+  InputDecoration _dropDeco(String label) => InputDecoration(
+        labelText: label,
+        labelStyle: const TextStyle(color: _orange, fontSize: 13),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: _border),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: _border),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: _orange),
+        ),
+      );
+
   // ── Body chính ────────────────────────────────
   Widget _buildBody() {
-    if (_isLoading) {
+    if (_isLoadingClasses || _isLoadingGrades) {
       return const Center(
         child: CircularProgressIndicator(color: _orange),
       );
@@ -193,8 +329,7 @@ class _MarkReportPageState extends State<MarkReportPage> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.error_outline_rounded,
-                  size: 48, color: Colors.red.shade300),
+              Icon(Icons.error_outline_rounded, size: 48, color: Colors.red.shade300),
               const SizedBox(height: 12),
               Text(
                 _error!,
@@ -203,7 +338,7 @@ class _MarkReportPageState extends State<MarkReportPage> {
               ),
               const SizedBox(height: 16),
               ElevatedButton.icon(
-                onPressed: _fetchGrades,
+                onPressed: _classes.isEmpty ? _fetchClassHistory : _fetchGrades,
                 icon: const Icon(Icons.refresh_rounded, size: 18),
                 label: const Text('Thử lại'),
                 style: ElevatedButton.styleFrom(
@@ -217,8 +352,7 @@ class _MarkReportPageState extends State<MarkReportPage> {
       );
     }
 
-    final grades = _filteredGrades;
-    if (grades.isEmpty) {
+    if (_grades.isEmpty) {
       return const Center(
         child: Text(
           'Không có dữ liệu điểm',
@@ -227,7 +361,7 @@ class _MarkReportPageState extends State<MarkReportPage> {
       );
     }
 
-    return _buildTable(grades);
+    return _buildTable(_grades);
   }
 
   // ── Bảng điểm ──────────────────────────────────
@@ -306,7 +440,8 @@ class _MarkReportPageState extends State<MarkReportPage> {
           _buildNavItem(
             Icons.home_rounded,
             onPressed: () {
-              Navigator.pop(context);
+              // Quay về trang chủ (HomePage là route gốc đã push trang này)
+              Navigator.popUntil(context, (route) => route.isFirst);
             },
           ),
           _buildNavItem(
@@ -315,8 +450,7 @@ class _MarkReportPageState extends State<MarkReportPage> {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (_) =>
-                      NotificationPage(token: widget.token),
+                  builder: (_) => NotificationPage(token: widget.token),
                 ),
               );
             },

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../controller/event_controller.dart';
 import '../../model/event_item.dart';
+import '../user_profile.dart';
+import 'notification.dart';
 
 class EventPage extends StatefulWidget {
   final String token;
@@ -89,7 +91,7 @@ class _EventPageState extends State<EventPage> {
           ],
         ),
       ),
-      bottomNavigationBar: _buildBottomNav(),
+      bottomNavigationBar: _buildBottomNav(context),
     );
   }
 
@@ -514,30 +516,66 @@ class _EventPageState extends State<EventPage> {
     );
   }
 
-  // ── Bottom Nav (đồng bộ với các trang khác) ───
-  Widget _buildBottomNav() {
+  // ── Bottom Nav ───────────────────────────────
+  Widget _buildBottomNav(BuildContext context) {
     return Container(
       height: 64,
-      decoration: const BoxDecoration(color: _orange),
+      decoration: const BoxDecoration(
+        color: _orange,
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(0),
+          topRight: Radius.circular(0),
+        ),
+      ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          _buildNavItem(Icons.home_rounded, isActive: true),
-          _buildNavItem(Icons.chat_bubble_outline_rounded),
-          _buildNavItem(Icons.person_outline_rounded),
+          _buildNavItem(
+            Icons.home_rounded,
+            onPressed: () {
+              // Quay về trang chủ (HomePage là route gốc đã push trang này)
+              Navigator.popUntil(context, (route) => route.isFirst);
+            },
+          ),
+          _buildNavItem(
+            Icons.chat_bubble_outline_rounded,
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => NotificationPage(token: widget.token),
+                ),
+              );
+            },
+          ),
+          _buildNavItem(
+            Icons.person_outline_rounded,
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => UserProfilePage(token: widget.token),
+                ),
+              );
+            },
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildNavItem(IconData icon, {bool isActive = false}) {
+  Widget _buildNavItem(
+      IconData icon, {
+        bool isActive = false,
+        VoidCallback? onPressed,
+      }) {
     return IconButton(
       icon: Icon(
         icon,
         color: isActive ? Colors.white : Colors.white.withOpacity(0.65),
         size: 28,
       ),
-      onPressed: () {},
+      onPressed: onPressed ?? () {},
     );
   }
 }

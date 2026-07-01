@@ -35,7 +35,7 @@ public class RefreshTokenServiceImpl implements RefreshTokenService {
         RefreshToken refreshToken = new RefreshToken();
 
         refreshToken.setUser(userRepository.findById(userId)
-                .orElseThrow(() -> new EntityNotFound("User not found")));
+                .orElseThrow(() -> new EntityNotFound("Không tìm thấy người dùng")));
 
         refreshToken.setExpiryDate(Instant.now().plusMillis(refreshTokenDurationMs));
         refreshToken.setToken(UUID.randomUUID().toString());
@@ -49,7 +49,7 @@ public class RefreshTokenServiceImpl implements RefreshTokenService {
         if (token.getExpiryDate().compareTo(Instant.now()) < 0) {
             refreshTokenRepository.delete(token);
             throw new TokenRefreshException(token.getToken(),
-                    "Refresh token was expired. Please make a new signin request");
+                    "Refresh token đã hết hạn. Vui lòng đăng nhập lại");
         }
         return token;
     }
@@ -58,6 +58,6 @@ public class RefreshTokenServiceImpl implements RefreshTokenService {
     @Transactional
     public int deleteByUserId(Long userId) {
         return refreshTokenRepository.deleteByUser(userRepository.
-                findById(userId).orElseThrow(() -> new EntityNotFound("User not found")));
+                findById(userId).orElseThrow(() -> new EntityNotFound("Không tìm thấy người dùng")));
     }
 }

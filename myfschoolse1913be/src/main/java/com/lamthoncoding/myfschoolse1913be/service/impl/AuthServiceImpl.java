@@ -32,10 +32,10 @@ public class AuthServiceImpl implements AuthService {
         log.info("Login request: {}", loginRequest.getPhone());
         User user = userRepository.findByPhoneAndStatus(
                 loginRequest.getPhone(), UserStatus.ACTIVE).orElseThrow(()
-                -> new EntityNotFound("Invalid username or password"));
+                -> new EntityNotFound("Tên đăng nhập hoặc mật khẩu không hợp lệ"));
         log.info("User found: {}", user.getUsername());
         if (!passwordEncoder.matches(loginRequest.getPassword(), user.getPassword())) {
-            throw new EntityNotFound("Invalid username or password.");
+            throw new EntityNotFound("Tên đăng nhập hoặc mật khẩu không hợp lệ");
         }
 
         return userMapper.toDto(user);
@@ -46,7 +46,7 @@ public class AuthServiceImpl implements AuthService {
 
         User user = userRepository.findByEmailAndPhone(request.getEmail(),request.getPhone())
                 .orElseThrow(() -> new EntityNotFound(
-                                "Email or phone is incorrect"));
+                        "Email hoặc số điện thoại không chính xác"));
 
         String randomPassword = generateRandomPassword();
 

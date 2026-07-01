@@ -220,12 +220,12 @@ class _TeacherApplicationState extends State<TeacherApplication> {
           borderRadius: BorderRadius.circular(10),
           boxShadow: isSelected
               ? [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.08),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ]
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.08),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
               : null,
         ),
         child: Text(
@@ -770,10 +770,10 @@ class _TeacherApplicationState extends State<TeacherApplication> {
 
   // ── Popup hiển thị lỗi (thay cho SnackBar) ───
   void _showErrorDialog(
-      BuildContext dialogContext,
-      String title,
-      List<String> messages,
-      ) {
+    BuildContext dialogContext,
+    String title,
+    List<String> messages,
+  ) {
     showDialog(
       context: dialogContext,
       builder: (ctx) {
@@ -803,17 +803,17 @@ class _TeacherApplicationState extends State<TeacherApplication> {
             children: messages
                 .map(
                   (m) => Padding(
-                padding: const EdgeInsets.only(bottom: 6),
-                child: Text(
-                  '• $m',
-                  style: const TextStyle(
-                    fontSize: 13.5,
-                    color: _textDark,
-                    height: 1.4,
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: Text(
+                      '• $m',
+                      style: const TextStyle(
+                        fontSize: 13.5,
+                        color: _textDark,
+                        height: 1.4,
+                      ),
+                    ),
                   ),
-                ),
-              ),
-            )
+                )
                 .toList(),
           ),
           actions: [
@@ -831,12 +831,12 @@ class _TeacherApplicationState extends State<TeacherApplication> {
   }
 
   Widget _buildDateField(
-      BuildContext ctx,
-      TextEditingController controller,
-      String hint,
-      TextEditingController fromController,
-      TextEditingController toController,
-      ) {
+    BuildContext ctx,
+    TextEditingController controller,
+    String hint,
+    TextEditingController fromController,
+    TextEditingController toController,
+  ) {
     return TextField(
       controller: controller,
       readOnly: true,
@@ -864,7 +864,7 @@ class _TeacherApplicationState extends State<TeacherApplication> {
 
         // API expects format yyyy-MM-dd
         controller.text =
-        '${picked.year}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}';
+            '${picked.year}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}';
 
         // Chỉ kiểm tra hợp lệ khi cả 2 ngày đã được chọn
         if (fromController.text.isNotEmpty && toController.text.isNotEmpty) {
@@ -925,7 +925,7 @@ class _TeacherApplicationState extends State<TeacherApplication> {
           _buildNavItem(
             Icons.home_rounded,
             onPressed: () {
-              Navigator.pop(context);
+              Navigator.popUntil(context, (route) => route.isFirst);
             },
           ),
           _buildNavItem(
@@ -956,10 +956,10 @@ class _TeacherApplicationState extends State<TeacherApplication> {
   }
 
   Widget _buildNavItem(
-      IconData icon, {
-        bool isActive = false,
-        VoidCallback? onPressed,
-      }) {
+    IconData icon, {
+    bool isActive = false,
+    VoidCallback? onPressed,
+  }) {
     return IconButton(
       icon: Icon(
         icon,

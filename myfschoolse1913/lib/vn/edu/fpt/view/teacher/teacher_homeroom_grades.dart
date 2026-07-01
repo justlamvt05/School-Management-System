@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:myfschoolse1913/vn/edu/fpt/view/teacher/teacher_grade_detail.dart';
 import '../../controller/teacher_controller.dart';
 import '../../model/class_grade_response.dart';
+import '../user/notification.dart';
+import '../user_profile.dart';
 import 'teacher_home_page.dart';
 
 class TeacherHomeroomGradesPage extends StatefulWidget {
@@ -29,6 +31,14 @@ class _TeacherHomeroomGradesPageState
   bool _isLoading = true;
   String? _error;
 
+  String? _selectedSchoolYear;
+  List<String> _schoolYears = [];
+
+  @override
+  void dispose() {
+    super.dispose();
+  }
+
   @override
   void initState() {
     super.initState();
@@ -53,6 +63,18 @@ class _TeacherHomeroomGradesPageState
               .toList();
           _selectedSemester =
           _semesters.isNotEmpty ? _semesters.first : null;
+
+          _schoolYears = _allGrades
+              .map((g) => g.schoolYear)
+              .where((sy) => sy.isNotEmpty)
+              .toSet()
+              .toList()
+            ..sort((a, b) => b.compareTo(a));
+            
+          if (_schoolYears.isNotEmpty && (_selectedSchoolYear == null || !_schoolYears.contains(_selectedSchoolYear))) {
+            _selectedSchoolYear = _schoolYears.first;
+          }
+
           _isLoading = false;
         });
       } else {
@@ -73,8 +95,11 @@ class _TeacherHomeroomGradesPageState
   List<_StudentSummary> get _studentSummaries {
     if (_selectedSemester == null) return [];
 
-    final filtered =
-    _allGrades.where((g) => g.semesterName == _selectedSemester).toList();
+    final filtered = _allGrades.where((g) {
+      final matchSemester = g.semesterName == _selectedSemester;
+      final matchYear = _selectedSchoolYear == null || g.schoolYear == _selectedSchoolYear;
+      return matchSemester && matchYear;
+    }).toList();
 
     // Gom nhóm theo studentId
     final Map<String, _StudentSummary> map = {};
@@ -119,12 +144,12 @@ class _TeacherHomeroomGradesPageState
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildTopBar(context),
-            _buildSemesterSelector(),
+            _buildFilters(),
             Expanded(child: _buildBody()),
           ],
         ),
       ),
-      bottomNavigationBar: _buildBottomNav(),
+      bottomNavigationBar: _buildBottomNav(context),
     );
   }
 
@@ -158,6 +183,44 @@ class _TeacherHomeroomGradesPageState
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildFilters() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSchoolYearInput(),
+        _buildSemesterSelector(),
+      ],
+    );
+  }
+
+  Widget _buildSchoolYearInput() {
+    if (_schoolYears.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      child: DropdownButtonFormField<String>(
+        value: _selectedSchoolYear,
+        decoration: InputDecoration(
+          labelText: 'Năm học',
+          labelStyle: const TextStyle(color: _orange),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: const BorderSide(color: _orange),
+          ),
+        ),
+        items: _schoolYears
+            .map((sy) => DropdownMenuItem(value: sy, child: Text(sy)))
+            .toList(),
+        onChanged: (val) {
+          if (val != null && val != _selectedSchoolYear) {
+            setState(() => _selectedSchoolYear = val);
+          }
+        },
       ),
     );
   }
@@ -346,23 +409,47 @@ class _TeacherHomeroomGradesPageState
     );
   }
 
-  Widget _buildBottomNav() {
+  Widget _buildBottomNav(BuildContext context) {
     return Container(
       height: 64,
-      decoration: const BoxDecoration(color: _orange),
+      decoration: const BoxDecoration(
+        color: _orange,
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(0),
+          topRight: Radius.circular(0),
+        ),
+      ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          _buildNavItem(Icons.home_rounded, isActive: true, onPressed: () {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                  builder: (_) =>
-                      TeacherHomePage(phone: '', token: widget.token)),
-            );
-          }),
-          _buildNavItem(Icons.chat_bubble_outline_rounded),
-          _buildNavItem(Icons.person_outline_rounded),
+          _buildNavItem(
+            Icons.home_rounded,
+            onPressed: () {
+              Navigator.popUntil(context, (route) => route.isFirst);
+            },
+          ),
+          _buildNavItem(
+            Icons.chat_bubble_outline_rounded,
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => NotificationPage(token: widget.token),
+                ),
+              );
+            },
+          ),
+          _buildNavItem(
+            Icons.person_outline_rounded,
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => UserProfilePage(token: widget.token),
+                ),
+              );
+            },
+          ),
         ],
       ),
     );

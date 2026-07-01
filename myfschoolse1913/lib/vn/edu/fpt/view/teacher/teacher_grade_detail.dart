@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../model/class_grade_response.dart';
+import '../user/notification.dart';
+import '../user_profile.dart';
 
 /// Trang chi tiết điểm của 1 học sinh – layout giống MarkReportPage
 class TeacherStudentGradeDetailPage extends StatelessWidget {
@@ -37,6 +39,7 @@ class TeacherStudentGradeDetailPage extends StatelessWidget {
           ],
         ),
       ),
+      bottomNavigationBar: _buildBottomNav(context),
     );
   }
 
@@ -243,6 +246,62 @@ class TeacherStudentGradeDetailPage extends StatelessWidget {
     return value % 1 == 0
         ? value.toInt().toString()
         : value.toStringAsFixed(1);
+  }
+
+  // ── Bottom Nav (đồng bộ với TeacherHomePage) ─────────
+  Widget _buildBottomNav(BuildContext context) {
+    return Container(
+      height: 64,
+      decoration: const BoxDecoration(color: _orange),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          _buildNavItem(
+            Icons.home_rounded,
+            onPressed: () {
+              Navigator.popUntil(context, (route) => route.isFirst);
+            },
+          ),
+          _buildNavItem(
+            Icons.chat_bubble_outline_rounded,
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => NotificationPage(token: token),
+                ),
+              );
+            },
+          ),
+          _buildNavItem(
+            Icons.person_outline_rounded,
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => UserProfilePage(token: token),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNavItem(
+    IconData icon, {
+    bool isActive = false,
+    VoidCallback? onPressed,
+  }) {
+    return IconButton(
+      icon: Icon(
+        icon,
+        color: isActive ? Colors.white : Colors.white.withOpacity(0.65),
+        size: 28,
+      ),
+      onPressed: onPressed ?? () {},
+    );
   }
 }
 

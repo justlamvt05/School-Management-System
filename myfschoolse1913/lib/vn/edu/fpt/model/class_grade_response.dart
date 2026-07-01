@@ -11,6 +11,7 @@ class ClassGradeResponse {
   final double? finalExam;
   final double? averageScore;
   final String semesterName;
+  final String schoolYear;
 
   ClassGradeResponse({
     required this.studentId,
@@ -25,6 +26,7 @@ class ClassGradeResponse {
     this.finalExam,
     this.averageScore,
     required this.semesterName,
+    required this.schoolYear,
   });
 
   factory ClassGradeResponse.fromJson(Map<String, dynamic> json) {
@@ -41,6 +43,7 @@ class ClassGradeResponse {
       finalExam: json['finalExam']?.toDouble(),
       averageScore: json['averageScore']?.toDouble(),
       semesterName: json['semesterName'] ?? '',
+      schoolYear: json['schoolYear'] ?? '',
     );
   }
 }

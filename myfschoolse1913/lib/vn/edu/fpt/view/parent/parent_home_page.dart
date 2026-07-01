@@ -1,27 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:myfschoolse1913/vn/edu/fpt/view/student/calendar.dart';
 import 'package:myfschoolse1913/vn/edu/fpt/view/student/mark_report.dart';
-import 'package:myfschoolse1913/vn/edu/fpt/view/teacher/teacher_application.dart';
-import 'package:myfschoolse1913/vn/edu/fpt/view/teacher/teacher_calendar.dart';
-import 'package:myfschoolse1913/vn/edu/fpt/view/teacher/teacher_homeroom_grades.dart';
-import 'package:myfschoolse1913/vn/edu/fpt/view/teacher/teacher_grade_input.dart';
-import 'package:myfschoolse1913/vn/edu/fpt/view/teacher/teacher_attendance_take.dart';
 import 'package:myfschoolse1913/vn/edu/fpt/view/user/event.dart';
 import 'package:myfschoolse1913/vn/edu/fpt/view/student/application.dart';
 import 'package:myfschoolse1913/vn/edu/fpt/view/student/attendance.dart';
 import 'package:myfschoolse1913/vn/edu/fpt/view/user_profile.dart';
 import '../../controller/user_controller.dart';
 import '../../model/user_profile_response.dart';
-import '../student/club.dart';
 import '../user/notification.dart';
+import 'parent_children_list_page.dart';
 
-
-class TeacherHomePage extends StatefulWidget {
+class ParentHomePage extends StatefulWidget {
   final String phone;
   final String token;
   final String refreshToken;
 
-  const TeacherHomePage({
+  const ParentHomePage({
     super.key,
     required this.phone,
     required this.token,
@@ -29,10 +23,10 @@ class TeacherHomePage extends StatefulWidget {
   });
 
   @override
-  State<TeacherHomePage> createState() => _TeacherHomePageState();
+  State<ParentHomePage> createState() => _ParentHomePageState();
 }
 
-class _TeacherHomePageState extends State<TeacherHomePage> {
+class _ParentHomePageState extends State<ParentHomePage> {
   UserProfile? _userProfile;
   bool _isLoadingProfile = true;
 
@@ -76,40 +70,31 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
   List<_MenuItem> _buildMenuItems() {
     return [
       _MenuItem(
-        label: 'Thời khóa biểu',
-        icon: Icons.calendar_month_rounded,
-        color: _purple,
-        builder: () => TeacherCalenderPage(token: widget.token),
-      ),
-      _MenuItem(
-        label: 'Điểm của lớp',
+        label: 'Điểm của con',
         icon: Icons.bar_chart_rounded,
         color: _amber,
-        builder: () => TeacherHomeroomGradesPage(token: widget.token),
+        builder: () => ParentChildrenListPage(
+          token: widget.token,
+          destination: ParentDestination.markReport,
+        ),
       ),
       _MenuItem(
-        label: 'Nhập điểm',
-        icon: Icons.edit_document,
-        color: _coral,
-        builder: () => TeacherGradeInputPage(token: widget.token),
-      ),
-      _MenuItem(
-        label: 'Sự kiện',
-        icon: Icons.event_note_rounded,
-        color: _blue,
-        builder: () => EventPage(token: widget.token),
-      ),
-      _MenuItem(
-        label: 'Đơn từ',
-        icon: Icons.description_outlined,
-        color: _red,
-        builder: () => TeacherApplication(token: widget.token),
-      ),
-      _MenuItem(
-        label: 'Điểm danh',
+        label: 'Điểm danh của con',
         icon: Icons.co_present_rounded,
         color: _green,
-        builder: () => TeacherAttendanceTakePage(token: widget.token),
+        builder: () => ParentChildrenListPage(
+          token: widget.token,
+          destination: ParentDestination.attendance,
+        ),
+      ),
+      _MenuItem(
+        label: 'Lịch học của con',
+        icon: Icons.calendar_month_rounded,
+        color: _purple,
+        builder: () => ParentChildrenListPage(
+          token: widget.token,
+          destination: ParentDestination.calendar,
+        ),
       ),
     ];
   }
@@ -148,8 +133,8 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
                   _isLoadingProfile
                       ? 'Đang tải...'
                       : (_userProfile != null
-                      ? 'Giáo Viên ${_userProfile!.fullName}'
-                      : ''),
+                            ? ' Phụ Huynh ${_userProfile!.fullName}'
+                            : ''),
                   style: const TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w500,
@@ -315,18 +300,18 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
             children: [
               Expanded(child: _buildCard(context, menuItems[2])),
               const SizedBox(width: 14),
-              Expanded(child: _buildCard(context, menuItems[3])),
+              // Expanded(child: _buildCard(context, menuItems[3])),
             ],
           ),
           const SizedBox(height: 14),
-          // Row 3
-          Row(
-            children: [
-              Expanded(child: _buildCard(context, menuItems[4])),
-              const SizedBox(width: 14),
-              Expanded(child: _buildCard(context, menuItems[5])),
-            ],
-          ),
+          // // Row 3
+          // Row(
+          //   children: [
+          //     Expanded(child: _buildCard(context, menuItems[2])),
+          //     const SizedBox(width: 14),
+          //     Expanded(child: const SizedBox.shrink()),
+          //   ],
+          // ),
         ],
       ),
     );
@@ -399,11 +384,7 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          _buildNavItem(
-            Icons.home_rounded,
-            onPressed: () {
-              Navigator.popUntil(context, (route) => route.isFirst);
-            }),
+          _buildNavItem(Icons.home_rounded, isActive: true),
           _buildNavItem(
             Icons.chat_bubble_outline_rounded,
             onPressed: () {
@@ -432,10 +413,10 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
   }
 
   Widget _buildNavItem(
-      IconData icon, {
-        bool isActive = false,
-        VoidCallback? onPressed,
-      }) {
+    IconData icon, {
+    bool isActive = false,
+    VoidCallback? onPressed,
+  }) {
     return IconButton(
       icon: Icon(
         icon,

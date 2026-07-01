@@ -18,13 +18,14 @@ public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+
     @Override
     public UserDto getMyProfile(String phone) {
 
         log.info("GetMyProfile: {}", phone);
         User user = userRepository.findByPhone(phone)
-                .orElseThrow(() -> new EntityNotFound("User Not Found"));
-        
+                .orElseThrow(() -> new EntityNotFound("Không tìm thấy người dùng"));
+
         return UserDto.builder()
                 .id(user.getId())
                 .username(user.getUsername())
@@ -41,13 +42,13 @@ public class UserServiceImpl implements UserService {
     public String changePassword (String newPass, String confirmPassword,  String phone){
         log.info("ChangePassword: {}", phone);
         if(!newPass.equals(confirmPassword)){
-            throw new InvalidInputException("Confirm Password does not match");
+            throw new InvalidInputException("Mật khẩu xác nhận không khớp");
         }
         User user = userRepository.findByPhone(phone)
-                .orElseThrow(() -> new EntityNotFound("User Not Found"));
+                .orElseThrow(() -> new EntityNotFound("Không tìm thấy người dùng"));
         String pass = passwordEncoder.encode(newPass);
         user.setPassword(pass);
         userRepository.save(user);
-        return "Changed password successfully";
+        return "Đổi mật khẩu thành công";
     }
 }

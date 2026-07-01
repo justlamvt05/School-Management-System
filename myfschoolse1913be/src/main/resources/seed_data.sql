@@ -172,6 +172,13 @@ VALUES (
 )
 ON CONFLICT (id) DO NOTHING;
 
+-- 5.1. Student Class Rooms (History)
+INSERT INTO student_classrooms (id, student_id, class_room_id, join_date, status, created_at, updated_at)
+VALUES 
+    (1, 1, 1, '2025-08-15', 'CURRENT', NOW(), NOW()),
+    (2, 2, 1, '2025-08-15', 'CURRENT', NOW(), NOW())
+ON CONFLICT (id) DO NOTHING;
+
 -- Grades – Bảng điểm Trần Thị B
 INSERT INTO grades (id, student_id, subject_id, semester_id, oral_score, score15_min, score1_period, final_exam, average_score, created_at, updated_at) VALUES
     -- ===== HỌC KỲ 1 =====
@@ -405,3 +412,49 @@ ON CONFLICT (id) DO NOTHING;
 -- Xác nhận dữ liệu đã insert
 -- ============================================================
 SELECT 'Seed data inserted successfully!' AS result;
+
+INSERT INTO roles (id, name, created_at, updated_at)
+VALUES (4, 'ROLE_PARENT', NOW(), NOW())
+    ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO user_roles (user_id, role_id)
+VALUES (4, 4)
+    ON CONFLICT DO NOTHING;
+
+INSERT INTO parents (
+    id,
+    parent_code,
+    user_id,
+    occupation,
+    relationship_note,
+    created_at,
+    updated_at
+)
+VALUES (
+           1,
+           'PH2025001',
+           4,
+           'Teacher',
+           'Father of Nguyễn Văn A',
+           NOW(),
+           NOW()
+       )
+    ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO parent_students (
+    id,
+    parent_id,
+    student_id,
+    relationship,
+    emergency_contact,
+    pickup_authorized
+)
+VALUES (
+           1,
+           1,
+           1,
+           'FATHER',
+           true,
+           true
+       )
+    ON CONFLICT (id) DO NOTHING;

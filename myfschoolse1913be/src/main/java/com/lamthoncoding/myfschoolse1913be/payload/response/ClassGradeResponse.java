@@ -32,4 +32,6 @@ public class ClassGradeResponse {
     private Double averageScore;
 
     private String semesterName;
+
+    private String schoolYear;
 }

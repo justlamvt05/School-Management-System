@@ -9,7 +9,6 @@ class ClubPage extends StatefulWidget {
 
   const ClubPage({super.key, required this.token});
 
-
   @override
   State<ClubPage> createState() => _ClubPageState();
 }
@@ -75,10 +74,17 @@ class _ClubPageState extends State<ClubPage> {
             _buildTabSelector(),
             Expanded(
               child: _isLoading
-                  ? const Center(child: CircularProgressIndicator(color: _orange))
+                  ? const Center(
+                      child: CircularProgressIndicator(color: _orange),
+                    )
                   : _errorMessage != null
-                      ? Center(child: Text(_errorMessage!, style: const TextStyle(color: Colors.red)))
-                      : _buildClubList(clubs),
+                  ? Center(
+                      child: Text(
+                        _errorMessage!,
+                        style: const TextStyle(color: Colors.red),
+                      ),
+                    )
+                  : _buildClubList(clubs),
             ),
           ],
         ),
@@ -161,12 +167,12 @@ class _ClubPageState extends State<ClubPage> {
           borderRadius: BorderRadius.circular(10),
           boxShadow: isSelected
               ? [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.08),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ]
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.08),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
               : null,
         ),
         child: Text(
@@ -323,7 +329,7 @@ class _ClubPageState extends State<ClubPage> {
           _buildNavItem(
             Icons.home_rounded,
             onPressed: () {
-              Navigator.pop(context);
+              Navigator.popUntil(context, (route) => route.isFirst);
             },
           ),
           _buildNavItem(
@@ -354,10 +360,10 @@ class _ClubPageState extends State<ClubPage> {
   }
 
   Widget _buildNavItem(
-      IconData icon, {
-        bool isActive = false,
-        VoidCallback? onPressed,
-      }) {
+    IconData icon, {
+    bool isActive = false,
+    VoidCallback? onPressed,
+  }) {
     return IconButton(
       icon: Icon(
         icon,
@@ -368,4 +374,3 @@ class _ClubPageState extends State<ClubPage> {
     );
   }
 }
-

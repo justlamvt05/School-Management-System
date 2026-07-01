@@ -1,8 +1,21 @@
+// teacher_grade_input_page.dart
 import 'package:flutter/material.dart';
 import '../../controller/teacher_controller.dart';
 import '../../model/class_grade_response.dart';
 import '../../model/classroom_response.dart';
 import '../../model/teacher_grade_request.dart';
+import 'teacher_home_page.dart';
+import '../user/notification.dart';
+import '../user_profile.dart';
+
+// Model nhỏ để giữ semester kèm schoolYear
+class _SemesterOption {
+  final int id;
+  final String name;
+  final String schoolYear;
+  const _SemesterOption(
+      {required this.id, required this.name, required this.schoolYear});
+}
 
 class TeacherGradeInputPage extends StatefulWidget {
   final String token;
@@ -24,16 +37,95 @@ class _TeacherGradeInputPageState extends State<TeacherGradeInputPage> {
   List<ClassRoomResponse> _classes = [];
   ClassRoomResponse? _selectedClass;
 
-  final List<Map<String, dynamic>> _semesters = [
-    {'id': 1, 'name': 'Học kỳ 1'},
-    {'id': 2, 'name': 'Học kỳ 2'},
-  ];
-  int _selectedSemesterId = 2;
+  // Tất cả semester options, sinh ra từ school years của lớp đang chọn
+  List<_SemesterOption> _semesterOptions = [];
+  _SemesterOption? _selectedSemester;
 
   List<ClassGradeResponse> _students = [];
   bool _isLoadingClasses = true;
   bool _isLoadingStudents = false;
   String? _error;
+
+  String? _selectedSchoolYear;
+
+  // ── Sinh danh sách năm học từ tên lớp + schoolYear hiện tại ──────────────
+  List<String> _getSchoolYearOptions(ClassRoomResponse? cls) {
+    if (cls == null) return [];
+    final name = cls.name;
+    final sy = cls.schoolYear;
+
+    final match = RegExp(r'^(\d+)').firstMatch(name);
+    if (match == null) return [sy];
+
+    final currentGrade = int.tryParse(match.group(1)!);
+    if (currentGrade == null || currentGrade < 10 || currentGrade > 12) {
+      return [sy];
+    }
+
+    final parts = sy.split('-');
+    if (parts.length != 2) return [sy];
+
+    final endYear = int.tryParse(parts[1]);
+    if (endYear == null) return [sy];
+
+    final options = <String>[];
+    for (int g = 10; g <= currentGrade; g++) {
+      final eYear = endYear - (currentGrade - g);
+      options.add('${eYear - 1}-$eYear');
+    }
+    return options.reversed.toList(); // mới nhất trước
+  }
+
+  // ── Sinh semester options dựa trên school year đang chọn ─────────────────
+  // Quy tắc: mỗi school year có 2 kỳ.
+  // Vì backend seed: 2025-2026 → id 1,2 ; 2024-2025 → id 3,4 ; ...
+  // Nếu bạn có API lấy semesters thì thay thế logic này bằng API call.
+  List<_SemesterOption> _buildSemesterOptions(String schoolYear) {
+    // Map cứng dựa trên dữ liệu seed — thay bằng API nếu cần
+    const Map<String, List<_SemesterOption>> _seedMap = {
+      '2025-2026': [
+        _SemesterOption(id: 1, name: 'Học kỳ 1', schoolYear: '2025-2026'),
+        _SemesterOption(id: 2, name: 'Học kỳ 2', schoolYear: '2025-2026'),
+      ],
+      '2024-2025': [
+        _SemesterOption(id: 3, name: 'Học kỳ 1', schoolYear: '2024-2025'),
+        _SemesterOption(id: 4, name: 'Học kỳ 2', schoolYear: '2024-2025'),
+      ],
+      // Thêm năm học khác nếu cần
+    };
+    return _seedMap[schoolYear] ?? [
+      _SemesterOption(id: 1, name: 'Học kỳ 1', schoolYear: schoolYear),
+      _SemesterOption(id: 2, name: 'Học kỳ 2', schoolYear: schoolYear),
+    ];
+  }
+
+  // ── Cập nhật semester options khi đổi school year ────────────────────────
+  void _onSchoolYearChanged(String? newYear) {
+    if (newYear == null || newYear == _selectedSchoolYear) return;
+    final options = _buildSemesterOptions(newYear);
+    setState(() {
+      _selectedSchoolYear = newYear;
+      _semesterOptions = options;
+      _selectedSemester = options.isNotEmpty ? options.first : null;
+    });
+    _fetchStudents();
+  }
+
+  // ── Cập nhật state khi đổi lớp ───────────────────────────────────────────
+  void _onClassChanged(ClassRoomResponse? val) {
+    if (val == null || val == _selectedClass) return;
+    final syOptions = _getSchoolYearOptions(val);
+    final firstYear = syOptions.isNotEmpty ? syOptions.first : val.schoolYear;
+    final semOptions = _buildSemesterOptions(firstYear);
+    setState(() {
+      _selectedClass = val;
+      _selectedSchoolYear = firstYear;
+      _semesterOptions = semOptions;
+      _selectedSemester = semOptions.isNotEmpty ? semOptions.first : null;
+      _students = [];
+    });
+    _fetchStudents();
+  }
 
   @override
   void initState() {
@@ -50,14 +142,30 @@ class _TeacherGradeInputPageState extends State<TeacherGradeInputPage> {
     try {
       final result = await _controller.getTeachingClasses();
       if (result.status && result.data != null) {
+        final classes = result.data!;
+        ClassRoomResponse? firstClass =
+        classes.isNotEmpty ? classes.first : null;
+        String? firstYear;
+        List<_SemesterOption> semOptions = [];
+        _SemesterOption? firstSem;
+
+        if (firstClass != null) {
+          final syOptions = _getSchoolYearOptions(firstClass);
+          firstYear = syOptions.isNotEmpty ? syOptions.first : firstClass.schoolYear;
+          semOptions = _buildSemesterOptions(firstYear);
+          firstSem = semOptions.isNotEmpty ? semOptions.first : null;
+        }
+
         setState(() {
-          _classes = result.data!;
-          if (_classes.isNotEmpty) {
-            _selectedClass = _classes.first;
-            _fetchStudents();
-          }
+          _classes = classes;
+          _selectedClass = firstClass;
+          _selectedSchoolYear = firstYear;
+          _semesterOptions = semOptions;
+          _selectedSemester = firstSem;
           _isLoadingClasses = false;
         });
+
+        if (firstClass != null) _fetchStudents();
       } else {
         setState(() {
           _error = result.message;
@@ -73,14 +181,17 @@ class _TeacherGradeInputPageState extends State<TeacherGradeInputPage> {
   }
 
   Future<void> _fetchStudents() async {
-    if (_selectedClass == null) return;
+    if (_selectedClass == null || _selectedSemester == null) return;
     setState(() {
       _isLoadingStudents = true;
       _error = null;
     });
     try {
+      // Truyền semesterId đúng với school year đang chọn
       final result = await _controller.getStudentsGradesByClassAndSemester(
-          _selectedClass!.id, _selectedSemesterId);
+        _selectedClass!.id,
+        _selectedSemester!.id, // ← đã đồng bộ với school year
+      );
       if (result.status && result.data != null) {
         setState(() {
           _students = result.data!;
@@ -101,17 +212,24 @@ class _TeacherGradeInputPageState extends State<TeacherGradeInputPage> {
   }
 
   void _openGradeDialog(ClassGradeResponse student) {
+    if (_selectedSemester == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Vui lòng chọn học kỳ trước')));
+      return;
+    }
     showDialog(
       context: context,
       builder: (_) => _GradeDialog(
         student: student,
-        semesterId: _selectedSemesterId,
+        semesterId: _selectedSemester!.id,
+        schoolYear: _selectedSemester!.schoolYear,
         controller: _controller,
         onGradeSaved: _fetchStudents,
       ),
     );
   }
-// ── Top bar ──────────────────────────────────
+
+  // ── Top bar ──────────────────────────────────────────────────────────────
   Widget _buildTopBar(BuildContext context) {
     return Container(
       color: _orange,
@@ -136,21 +254,17 @@ class _TeacherGradeInputPageState extends State<TeacherGradeInputPage> {
               style: TextButton.styleFrom(
                 padding: const EdgeInsets.symmetric(horizontal: 6),
               ),
-              icon: const Icon(
-                Icons.arrow_back_ios_new_rounded,
-                color: Colors.white,
-                size: 11,
-              ),
-              label: const Text(
-                'Trang chính',
-                style: TextStyle(color: Colors.white, fontSize: 11),
-              ),
+              icon: const Icon(Icons.arrow_back_ios_new_rounded,
+                  color: Colors.white, size: 11),
+              label: const Text('Trang chính',
+                  style: TextStyle(color: Colors.white, fontSize: 11)),
             ),
           ),
         ],
       ),
     );
   }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -163,6 +277,7 @@ class _TeacherGradeInputPageState extends State<TeacherGradeInputPage> {
           Expanded(child: _buildBody()),
         ],
       ),
+      bottomNavigationBar: _buildBottomNav(),
     );
   }
 
@@ -181,6 +296,8 @@ class _TeacherGradeInputPageState extends State<TeacherGradeInputPage> {
       );
     }
 
+    final syOptions = _getSchoolYearOptions(_selectedClass);
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: const BoxDecoration(
@@ -189,65 +306,79 @@ class _TeacherGradeInputPageState extends State<TeacherGradeInputPage> {
       ),
       child: Row(
         children: [
+          // Lớp
           Expanded(
             child: DropdownButtonFormField<ClassRoomResponse>(
               value: _selectedClass,
-              decoration: InputDecoration(
-                labelText: 'Chọn lớp',
-                labelStyle: const TextStyle(color: _orange),
-                contentPadding:
-                const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8)),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: const BorderSide(color: _orange),
-                ),
-              ),
+              decoration: _dropDeco('Chọn lớp'),
               items: _classes
-                  .map((c) =>
-                  DropdownMenuItem(value: c, child: Text(c.name)))
+                  .map(
+                    (c) => DropdownMenuItem(
+                  value: c,
+                  child: Text(c.name),
+                ),
+              )
                   .toList(),
-              onChanged: (val) {
-                if (val != null && val != _selectedClass) {
-                  setState(() => _selectedClass = val);
-                  _fetchStudents();
-                }
-              },
+              onChanged: _onClassChanged,
             ),
           ),
           const SizedBox(width: 12),
+          // Học kỳ
           Expanded(
-            child: DropdownButtonFormField<int>(
-              value: _selectedSemesterId,
-              decoration: InputDecoration(
-                labelText: 'Học kỳ',
-                labelStyle: const TextStyle(color: _orange),
-                contentPadding:
-                const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8)),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: const BorderSide(color: _orange),
+            child: DropdownButtonFormField<_SemesterOption>(
+              value: _selectedSemester,
+              decoration: _dropDeco('Học kỳ'),
+              items: _semesterOptions
+                  .map(
+                    (s) => DropdownMenuItem(
+                  value: s,
+                  child: Text(s.name),
                 ),
-              ),
-              items: _semesters
-                  .map((s) => DropdownMenuItem<int>(
-                  value: s['id'], child: Text(s['name'])))
+              )
                   .toList(),
               onChanged: (val) {
-                if (val != null && val != _selectedSemesterId) {
-                  setState(() => _selectedSemesterId = val);
+                if (val != null && val != _selectedSemester) {
+                  setState(() => _selectedSemester = val);
                   _fetchStudents();
                 }
               },
             ),
           ),
+          // Năm học
+          Expanded(
+            child: DropdownButtonFormField<String>(
+              value: _selectedSchoolYear,
+              decoration: _dropDeco('Năm học'),
+              items: syOptions
+                  .map(
+                    (sy) => DropdownMenuItem(
+                  value: sy,
+                  child: Text(sy),
+                ),
+              )
+                  .toList(),
+              onChanged: _onSchoolYearChanged,
+            ),
+          ),
+          const SizedBox(width: 12),
+
+
         ],
       ),
     );
   }
+
+  InputDecoration _dropDeco(String label) => InputDecoration(
+    labelText: label,
+    labelStyle: const TextStyle(color: _orange),
+    contentPadding:
+    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+    focusedBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(8),
+      borderSide: const BorderSide(color: _orange),
+    ),
+  );
 
   Widget _buildBody() {
     if (_isLoadingStudents) {
@@ -293,12 +424,11 @@ class _TeacherGradeInputPageState extends State<TeacherGradeInputPage> {
                           fontSize: 13,
                           color: _orange)),
                 ),
-                SizedBox(width: 90), // space for button
+                SizedBox(width: 90),
               ],
             ),
           ),
           const Divider(height: 1, color: _border),
-          // Table rows
           ListView.separated(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
@@ -306,9 +436,7 @@ class _TeacherGradeInputPageState extends State<TeacherGradeInputPage> {
             separatorBuilder: (_, __) =>
             const Divider(height: 1, color: _border),
             itemBuilder: (context, index) {
-              final student = _students[index];
-              final isAlt = index % 2 == 1;
-              return _buildTableRow(student, isAlt);
+              return _buildTableRow(_students[index], index % 2 == 1);
             },
           ),
         ],
@@ -333,35 +461,28 @@ class _TeacherGradeInputPageState extends State<TeacherGradeInputPage> {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       child: Row(
         children: [
-          // Index avatar
           CircleAvatar(
             radius: 16,
             backgroundColor: _orange.withOpacity(0.12),
             child: const Icon(Icons.person, color: _orange, size: 18),
           ),
           const SizedBox(width: 8),
-          // Name + code
           Expanded(
             flex: 5,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  student.studentName,
-                  style: const TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 14,
-                      color: Color(0xFF222222)),
-                ),
-                Text(
-                  student.studentCode,
-                  style:
-                  const TextStyle(fontSize: 12, color: _textGrey),
-                ),
+                Text(student.studentName,
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                        color: Color(0xFF222222))),
+                Text(student.studentCode,
+                    style:
+                    const TextStyle(fontSize: 12, color: _textGrey)),
               ],
             ),
           ),
-          // TBM
           Expanded(
             flex: 2,
             child: Center(
@@ -387,10 +508,10 @@ class _TeacherGradeInputPageState extends State<TeacherGradeInputPage> {
                   style: TextStyle(color: _textGrey)),
             ),
           ),
-          // Action button
           SizedBox(
             width: 90,
             child: TextButton.icon(
+              // ← bỏ tham số schoolYear thừa, lấy từ _selectedSemester
               onPressed: () => _openGradeDialog(student),
               icon: Icon(
                 hasGrade ? Icons.edit_outlined : Icons.add_circle_outline,
@@ -418,6 +539,62 @@ class _TeacherGradeInputPageState extends State<TeacherGradeInputPage> {
   String _fmtScore(double? val) => val == null
       ? ''
       : (val % 1 == 0 ? val.toInt().toString() : val.toStringAsFixed(1));
+
+  // ── Bottom Nav (đồng bộ với TeacherHomePage) ─────────
+  Widget _buildBottomNav() {
+    return Container(
+      height: 64,
+      decoration: const BoxDecoration(color: _orange),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          _buildNavItem(
+            Icons.home_rounded,
+            onPressed: () {
+              Navigator.popUntil(context, (route) => route.isFirst);
+            },
+          ),
+          _buildNavItem(
+            Icons.chat_bubble_outline_rounded,
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => NotificationPage(token: widget.token),
+                ),
+              );
+            },
+          ),
+          _buildNavItem(
+            Icons.person_outline_rounded,
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => UserProfilePage(token: widget.token),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNavItem(
+    IconData icon, {
+    bool isActive = false,
+    VoidCallback? onPressed,
+  }) {
+    return IconButton(
+      icon: Icon(
+        icon,
+        color: isActive ? Colors.white : Colors.white.withOpacity(0.65),
+        size: 28,
+      ),
+      onPressed: onPressed ?? () {},
+    );
+  }
 }
 
 // ─── Grade Dialog ────────────────────────────────────────────────────────────
@@ -425,12 +602,14 @@ class _TeacherGradeInputPageState extends State<TeacherGradeInputPage> {
 class _GradeDialog extends StatefulWidget {
   final ClassGradeResponse student;
   final int semesterId;
+  final String schoolYear;
   final TeacherController controller;
   final VoidCallback onGradeSaved;
 
   const _GradeDialog({
     required this.student,
     required this.semesterId,
+    required this.schoolYear,
     required this.controller,
     required this.onGradeSaved,
   });
@@ -451,14 +630,10 @@ class _GradeDialogState extends State<_GradeDialog> {
   @override
   void initState() {
     super.initState();
-    _oralCtrl =
-        TextEditingController(text: _fmt(widget.student.oralScore));
-    _15mCtrl =
-        TextEditingController(text: _fmt(widget.student.score15Min));
-    _1pCtrl =
-        TextEditingController(text: _fmt(widget.student.score1Period));
-    _finalCtrl =
-        TextEditingController(text: _fmt(widget.student.finalExam));
+    _oralCtrl = TextEditingController(text: _fmt(widget.student.oralScore));
+    _15mCtrl = TextEditingController(text: _fmt(widget.student.score15Min));
+    _1pCtrl = TextEditingController(text: _fmt(widget.student.score1Period));
+    _finalCtrl = TextEditingController(text: _fmt(widget.student.finalExam));
   }
 
   String _fmt(double? val) => val == null
@@ -481,6 +656,7 @@ class _GradeDialogState extends State<_GradeDialog> {
         studentId: widget.student.studentId,
         subjectId: widget.student.subjectId,
         semesterId: widget.semesterId,
+        schoolYear: widget.schoolYear, // ← đã đồng bộ từ semester đang chọn
         oralScore: double.tryParse(_oralCtrl.text),
         score15Min: double.tryParse(_15mCtrl.text),
         score1Period: double.tryParse(_1pCtrl.text),
@@ -496,8 +672,7 @@ class _GradeDialogState extends State<_GradeDialog> {
 
       if (res.status) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content:
-          Text('Đã lưu điểm cho ${widget.student.studentName}'),
+          content: Text('Đã lưu điểm cho ${widget.student.studentName}'),
           backgroundColor: Colors.green,
         ));
         widget.onGradeSaved();
@@ -582,8 +757,12 @@ class _GradeDialogState extends State<_GradeDialog> {
                 Text(widget.student.studentCode,
                     style: const TextStyle(
                         fontSize: 13, color: Color(0xFF666666))),
+                const Spacer(),
+                Text('${widget.schoolYear} · ${_semesterLabel()}',
+                    style: const TextStyle(
+                        fontSize: 12, color: Color(0xFF9A9A9A))),
                 if (widget.student.averageScore != null) ...[
-                  const Spacer(),
+                  const SizedBox(width: 8),
                   const Text('TBM: ',
                       style: TextStyle(
                           fontSize: 13, color: Color(0xFF666666))),
@@ -619,7 +798,6 @@ class _GradeDialogState extends State<_GradeDialog> {
             ),
           ),
 
-          // Divider + actions
           const Divider(height: 1, color: Color(0xFFEDEDED)),
           Padding(
             padding:
@@ -650,10 +828,9 @@ class _GradeDialogState extends State<_GradeDialog> {
                         child: CircularProgressIndicator(
                             strokeWidth: 2, color: Colors.white))
                         : const Icon(Icons.save_outlined, size: 18),
-                    label: Text(
-                        widget.student.gradeId != null
-                            ? 'Cập nhật'
-                            : 'Lưu điểm'),
+                    label: Text(widget.student.gradeId != null
+                        ? 'Cập nhật'
+                        : 'Lưu điểm'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: _orange,
                       foregroundColor: Colors.white,
@@ -669,6 +846,12 @@ class _GradeDialogState extends State<_GradeDialog> {
         ],
       ),
     );
+  }
+
+  // Lấy tên học kỳ từ semesterId để hiển thị trong dialog
+  String _semesterLabel() {
+    // Odd id = HK1, Even id = HK2 (theo seed data)
+    return widget.semesterId % 2 == 1 ? 'Học kỳ 1' : 'Học kỳ 2';
   }
 
   Widget _buildRow(
@@ -694,8 +877,8 @@ class _GradeDialogState extends State<_GradeDialog> {
                 fontSize: 15, fontWeight: FontWeight.w600),
             decoration: InputDecoration(
               hintText: hint,
-              hintStyle:
-              const TextStyle(fontSize: 12, color: Color(0xFFBBBBBB)),
+              hintStyle: const TextStyle(
+                  fontSize: 12, color: Color(0xFFBBBBBB)),
               filled: true,
               fillColor: const Color(0xFFF7F6F6),
               contentPadding: const EdgeInsets.symmetric(
@@ -705,7 +888,8 @@ class _GradeDialogState extends State<_GradeDialog> {
                   borderSide: BorderSide.none),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
-                borderSide: const BorderSide(color: _orange, width: 1.5),
+                borderSide:
+                const BorderSide(color: _orange, width: 1.5),
               ),
             ),
           ),

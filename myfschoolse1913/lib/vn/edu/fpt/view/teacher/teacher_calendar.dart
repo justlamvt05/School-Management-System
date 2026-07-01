@@ -447,7 +447,12 @@ class _TeacherCalenderPageState extends State<TeacherCalenderPage> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          _buildNavItem(Icons.home_rounded, isActive: false),
+          _buildNavItem(
+            Icons.home_rounded,
+            onPressed: () {
+              Navigator.popUntil(context, (route) => route.isFirst);
+            }
+            ),
           _buildNavItem(
             Icons.chat_bubble_outline_rounded,
             onPressed: () {

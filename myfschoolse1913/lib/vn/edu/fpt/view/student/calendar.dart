@@ -6,8 +6,15 @@ import '../user_profile.dart';
 
 class CalendarPage extends StatefulWidget {
   final String token;
+  final int? studentId;
+  final int? classId;
 
-  const CalendarPage({super.key, required this.token});
+  const CalendarPage({
+    super.key,
+    required this.token,
+    this.studentId,
+    this.classId,
+  });
 
   @override
   State<CalendarPage> createState() => _CalendarPageState();
@@ -76,7 +83,7 @@ class _CalendarPageState extends State<CalendarPage> {
     });
 
     try {
-      final result = await _controller.getSchedules(1);
+      final result = await _controller.getSchedules(widget.classId ?? 1);
       if (result.status && result.data != null) {
         setState(() {
           _scheduleItems = result.data!;
@@ -84,8 +91,7 @@ class _CalendarPageState extends State<CalendarPage> {
 
           // Tìm ngày đầu tiên có lịch để chọn mặc định
           for (int i = 0; i < _dayOrder.length; i++) {
-            if (_scheduleItems
-                .any((item) => item.dayOfWeek == _dayOrder[i])) {
+            if (_scheduleItems.any((item) => item.dayOfWeek == _dayOrder[i])) {
               _selectedDayIndex = i;
               break;
             }
@@ -199,8 +205,7 @@ class _CalendarPageState extends State<CalendarPage> {
                   style: TextStyle(
                     fontSize: 12,
                     color: isSelected ? _textDark : _textGrey,
-                    fontWeight:
-                        isSelected ? FontWeight.w600 : FontWeight.w400,
+                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -238,9 +243,7 @@ class _CalendarPageState extends State<CalendarPage> {
   // ── Body chính ────────────────────────────────
   Widget _buildBody() {
     if (_isLoading) {
-      return const Center(
-        child: CircularProgressIndicator(color: _orange),
-      );
+      return const Center(child: CircularProgressIndicator(color: _orange));
     }
 
     if (_error != null) {
@@ -250,8 +253,11 @@ class _CalendarPageState extends State<CalendarPage> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.error_outline_rounded,
-                  size: 48, color: Colors.red.shade300),
+              Icon(
+                Icons.error_outline_rounded,
+                size: 48,
+                color: Colors.red.shade300,
+              ),
               const SizedBox(height: 12),
               Text(
                 _error!,
@@ -281,7 +287,11 @@ class _CalendarPageState extends State<CalendarPage> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.event_busy_rounded, size: 48, color: _textGrey.withOpacity(0.5)),
+            Icon(
+              Icons.event_busy_rounded,
+              size: 48,
+              color: _textGrey.withOpacity(0.5),
+            ),
             const SizedBox(height: 12),
             const Text(
               'Không có tiết học',
@@ -338,7 +348,9 @@ class _CalendarPageState extends State<CalendarPage> {
                         children: [
                           Container(
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 3),
+                              horizontal: 8,
+                              vertical: 3,
+                            ),
                             decoration: BoxDecoration(
                               color: lineColor.withOpacity(0.15),
                               borderRadius: BorderRadius.circular(6),
@@ -376,22 +388,32 @@ class _CalendarPageState extends State<CalendarPage> {
                       const SizedBox(height: 6),
                       Row(
                         children: [
-                          const Icon(Icons.room_rounded,
-                              size: 14, color: _textGrey),
+                          const Icon(
+                            Icons.room_rounded,
+                            size: 14,
+                            color: _textGrey,
+                          ),
                           const SizedBox(width: 4),
                           Text(
                             item.room,
                             style: const TextStyle(
-                                fontSize: 12, color: _textGrey),
+                              fontSize: 12,
+                              color: _textGrey,
+                            ),
                           ),
                           const SizedBox(width: 16),
-                          const Icon(Icons.access_time_rounded,
-                              size: 14, color: _textGrey),
+                          const Icon(
+                            Icons.access_time_rounded,
+                            size: 14,
+                            color: _textGrey,
+                          ),
                           const SizedBox(width: 4),
                           Text(
                             item.periodLabel,
                             style: const TextStyle(
-                                fontSize: 12, color: _textGrey),
+                              fontSize: 12,
+                              color: _textGrey,
+                            ),
                           ),
                         ],
                       ),
@@ -449,7 +471,7 @@ class _CalendarPageState extends State<CalendarPage> {
           _buildNavItem(
             Icons.home_rounded,
             onPressed: () {
-              Navigator.pop(context);
+              Navigator.popUntil(context, (route) => route.isFirst);
             },
           ),
           _buildNavItem(
@@ -480,10 +502,10 @@ class _CalendarPageState extends State<CalendarPage> {
   }
 
   Widget _buildNavItem(
-      IconData icon, {
-        bool isActive = false,
-        VoidCallback? onPressed,
-      }) {
+    IconData icon, {
+    bool isActive = false,
+    VoidCallback? onPressed,
+  }) {
     return IconButton(
       icon: Icon(
         icon,

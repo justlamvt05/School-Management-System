@@ -914,7 +914,7 @@ class _ApplicationPageState extends State<ApplicationPage> {
           _buildNavItem(
             Icons.home_rounded,
             onPressed: () {
-              Navigator.pop(context);
+              Navigator.popUntil(context, (route) => route.isFirst);
             },
           ),
           _buildNavItem(

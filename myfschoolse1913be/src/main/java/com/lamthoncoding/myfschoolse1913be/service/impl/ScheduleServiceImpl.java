@@ -28,7 +28,7 @@ public class ScheduleServiceImpl implements ScheduleService {
         log.info("Get schedule of class {}", classId);
 
         classRoomRepository.findById(classId)
-                .orElseThrow(() -> new EntityNotFound("Class not found"));
+                .orElseThrow(() -> new EntityNotFound("Không tìm thấy lớp học"));
 
         return scheduleRepository.findByClassRoomId(classId)
                 .stream()
@@ -42,7 +42,7 @@ public class ScheduleServiceImpl implements ScheduleService {
         log.info("Get schedule of class {} on {}", classId, dayOfWeek);
 
         classRoomRepository.findById(classId)
-                .orElseThrow(() -> new EntityNotFound("Class not found"));
+                .orElseThrow(() -> new EntityNotFound("Không tìm thấy lớp học"));
 
         return scheduleRepository.findByClassRoomIdAndDayOfWeek(classId, dayOfWeek)
                 .stream()

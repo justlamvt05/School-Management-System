@@ -32,7 +32,7 @@ public class AttendanceServiceImpl implements AttendanceService {
         log.info("Getting attendance records for class {} on {}",classId,date);
 
         classRoomRepository.findById(classId)
-                .orElseThrow(() -> new EntityNotFound("Class not found"));
+                .orElseThrow(() -> new EntityNotFound("Không tìm thấy lớp học"));
 
         return attendanceRepository
                 .findByClassRoomIdAndAttendanceDate(
@@ -51,7 +51,7 @@ public class AttendanceServiceImpl implements AttendanceService {
         log.info("Getting attendance records for class {} by student {}",classId, studentId);
 
         classRoomRepository.findById(classId)
-                .orElseThrow(() -> new EntityNotFound("Class not found"));
+                .orElseThrow(() -> new EntityNotFound("Không tìm thấy lớp học"));
 
         LocalDate fromDate = LocalDate.of(year, month, 1);
         LocalDate toDate = fromDate.withDayOfMonth(fromDate.lengthOfMonth());
@@ -84,7 +84,7 @@ public class AttendanceServiceImpl implements AttendanceService {
     @Override
     public Long studentId (Long userId){
         Student studentOptional = studentRepository.findById(userId)
-                .orElseThrow(() -> new EntityNotFound("Student not found"));
+                .orElseThrow(() -> new EntityNotFound("Không tìm thấy học sinh"));
         return studentOptional.getId();
     }
 }

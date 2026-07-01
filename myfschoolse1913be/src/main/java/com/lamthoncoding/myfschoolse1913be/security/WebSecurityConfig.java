@@ -63,8 +63,9 @@ public class WebSecurityConfig {
                         ).permitAll()
                         .requestMatchers("/admin/**").hasRole("ADMIN")
                         .requestMatchers("/teacher/**").hasRole("TEACHER")
+                        .requestMatchers("/parent/**").hasRole("PARENT")
                         .requestMatchers("/student/**",
-                                 "/attendances/**").hasRole("STUDENT")
+                                 "/attendances/**").hasAnyRole("STUDENT", "PARENT")
                         .requestMatchers("/applications", "/applications/**","/notifications", "/notifications/**", "/users/**", "/events", "/events/**").authenticated()
                         .anyRequest().authenticated()
                 )
@@ -86,7 +87,7 @@ public class WebSecurityConfig {
                 "http://localhost:5000",
                 "http://localhost:26033",
                 "http://localhost:36894",
-                "http://localhost:19896"));
+                "http://localhost:37774"));
         config.setAllowedMethods(
                 List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
         );

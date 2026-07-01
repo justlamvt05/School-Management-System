@@ -6,6 +6,8 @@ import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.time.LocalDate;
+
 @Getter
 @Setter
 public class TeacherGradeRequest {
@@ -18,6 +20,9 @@ public class TeacherGradeRequest {
 
     @NotNull(message = "Mã học kỳ không được để trống")
     private Long semesterId;
+
+    @NotNull(message = "Năm học không được để trống")
+    private String schoolYear;
 
     @Min(value = 0, message = "Điểm không được nhỏ hơn 0")
     @Max(value = 10, message = "Điểm không được lớn hơn 10")
